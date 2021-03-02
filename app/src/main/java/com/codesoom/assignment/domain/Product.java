@@ -20,24 +20,51 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+
+@Entity
 @Getter
+@Builder
 @NoArgsConstructor
 public class Product {
 
     // Prpduct는 JPA의 Entity로 사용할 것이기 때문에 final을 붙여줄 경우 문제가 된다.
+    @Id
+    @GeneratedValue
     private Long id;
+
     private String name;
+
     private String maker;
+
     private Integer price;
+
     private String imageUrl;
 
-    @Builder
-    public Product( String name, String maker, Integer price, String imageUrl) {
+    public Product(Long id, String name, String maker, Integer price, String imageUrl) {
+        this.id = id;
         this.name = name;
         this.maker = maker;
         this.price = price;
         this.imageUrl = imageUrl;
     }
 
+    public Product(String name, String maker, Integer price, String imageUrl) {
+        this.name = name;
+        this.maker = maker;
+        this.price = price;
+        this.imageUrl = imageUrl;
+    }
+
+    public Product changeWith(Product request) {
+        this.name = request.getName();
+        this.maker = request.getMaker();
+        this.price = request.getPrice();
+        this.imageUrl = request.getImageUrl();
+
+        return this;
+    }
 }
 
