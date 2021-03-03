@@ -2,8 +2,8 @@ package com.codesoom.assignment.controllers;
 
 import com.codesoom.assignment.application.UserService;
 import com.codesoom.assignment.domain.User;
+import com.codesoom.assignment.dto.request.UserModificationData;
 import com.codesoom.assignment.dto.request.UserRegistrationData;
-import com.codesoom.assignment.dto.response.UserModificationData;
 import com.codesoom.assignment.errors.UserNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -14,8 +14,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -64,6 +64,9 @@ class UserControllerTest {
 
         // 존재하지 않는 id 수정 요청시 NOT_FOUND(404) 발생
         given(userService.updateUser(eq(100L), any(UserModificationData.class)))
+                .willThrow(new UserNotFoundException(100L));
+
+        given(userService.deleteUser(100L))
                 .willThrow(new UserNotFoundException(100L));
     }
 
@@ -172,6 +175,16 @@ class UserControllerTest {
                 delete("/users/1"))
                 .andExpect(status().isNoContent());
 
+        // UserController -> destory -> userService.deleteUser(id)가 없으면 error발생
         verify(userService).deleteUser(1L);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 삭제 요청시 404(NOT_FOUND) error") // NOT_FOUND == 404
+    void destroyWithNotExistedId() throws Exception {
+        mvc.perform(delete("/users/100"))
+                .andExpect(status().isNotFound());
+
+        verify(userService).deleteUser(100L);
     }
 }

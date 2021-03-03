@@ -3,7 +3,7 @@ package com.codesoom.assignment.application;
 import com.codesoom.assignment.domain.User;
 import com.codesoom.assignment.domain.UserRepository;
 import com.codesoom.assignment.dto.request.UserRegistrationData;
-import com.codesoom.assignment.dto.response.UserModificationData;
+import com.codesoom.assignment.dto.request.UserModificationData;
 import com.codesoom.assignment.errors.UserEmailDuplicationException;
 import com.codesoom.assignment.errors.UserNotFoundException;
 import com.github.dozermapper.core.DozerBeanMapperBuilder;
@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 
 class UserServiceTest {
     private static final String EXISTED_EMAIL_ADDRESS = "existed@gmail.com";
+    private static final Long DELETED_USER_ID = 200L;
 
     private UserService userService;
     private final UserRepository userRepository = mock(UserRepository.class);
@@ -39,20 +40,31 @@ class UserServiceTest {
         });
 
         given(userRepository.existsByEmail(EXISTED_EMAIL_ADDRESS))
-                .willThrow(
-                        new UserEmailDuplicationException(
-                                EXISTED_EMAIL_ADDRESS));
+                .willReturn(true);
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(
-                User.builder()
-                    .id(1L)
-                    .email(EXISTED_EMAIL_ADDRESS)
-                    .name("Tester")
-                    .password("TEST")
-                    .build()));
+        given(userRepository.findByIdAndDeletedIsFalse(1L))
+                .willReturn(Optional.of(
+                        User.builder()
+                            .id(1L)
+                            .email(EXISTED_EMAIL_ADDRESS)
+                            .name("Tester")
+                            .password("TEST")
+                            .build()));
 
-        given(userRepository.findById(100L))
-                .willThrow(new UserNotFoundException(100L));
+        // TODO : 잘못했음..
+        // 없는 사용자를 요청할 때는 비어있는 값을 리턴해주어야 한다.
+        given(userRepository.findById(100L)).willReturn(Optional.empty());
+
+        // userRepository.findByIdAndDeletedIsFalse(id)를 추가하면서 아래처럼 안주어도 된다.
+//        given(userRepository.findById(DELETED_USER_ID)).willReturn(Optional.of(
+//                User.builder()
+//                .id(DELETED_USER_ID)
+//                .deleted(true)
+//                .build()));
+
+        given(userRepository.findByIdAndDeletedIsFalse(DELETED_USER_ID))
+                .willReturn(Optional.empty());
+
     }
 
     @Test
@@ -105,7 +117,7 @@ class UserServiceTest {
         assertThat(user.getEmail()).isEqualTo(EXISTED_EMAIL_ADDRESS);
         assertThat(user.getName()).isEqualTo("TEST");
 
-        verify(userRepository).findById(1L);
+        verify(userRepository).findByIdAndDeletedIsFalse(1L);
     }
 
     @Test
@@ -121,9 +133,56 @@ class UserServiceTest {
         // No value present == 값이 없습니다.
 //        userService.updateUser(1000L, modificationData);
 
+        // 망했다.
         assertThatThrownBy(() -> userService.updateUser(100L, modificationData))
                 .isInstanceOf(UserNotFoundException.class);
 
-        verify(userRepository).findById(100L);
+        verify(userRepository).findByIdAndDeletedIsFalse(100L);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 정보 수정을 요청시 400 error") // BAD_REQUEST == 400
+    void updateUserWithNotDeletedId() {
+        // 1. client modify Data
+        UserModificationData modificationData = UserModificationData.builder()
+                .name("TEST")
+                .password("test")
+                .build();
+
+
+        // 망했다.
+        assertThatThrownBy(
+                () -> userService.updateUser(DELETED_USER_ID, modificationData)
+        )
+                .isInstanceOf(UserNotFoundException.class);
+
+        verify(userRepository).findByIdAndDeletedIsFalse(DELETED_USER_ID);
+    }
+
+    @Test
+    @DisplayName("사용자를 삭제 합니다.")
+    void deleteUserWithExistedId() {
+        User user = userService.deleteUser(1L);
+
+        assertThat(user.getId()).isEqualTo(1L);
+        assertThat(user.isDeleted()).isTrue();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자 삭제요청시 404(NOT_FOUND) error ")
+    void deleteUserWithNotExistedId() {
+        assertThatThrownBy(() -> userService.deleteUser(100L))
+                .isInstanceOf(UserNotFoundException.class);
+
+        verify(userRepository).findByIdAndDeletedIsFalse(100L);
+    }
+
+    @Test
+    @DisplayName("이미 삭제된 사용자라도 404 error")
+    void deleteUserWithDeletedId() {
+        assertThatThrownBy(() -> userService.deleteUser(DELETED_USER_ID))
+                .isInstanceOf(UserNotFoundException.class);
+
+        verify(userRepository).findByIdAndDeletedIsFalse(DELETED_USER_ID);
     }
 }

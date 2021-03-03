@@ -3,8 +3,9 @@ package com.codesoom.assignment.application;
 import com.codesoom.assignment.domain.User;
 import com.codesoom.assignment.domain.UserRepository;
 import com.codesoom.assignment.dto.request.UserRegistrationData;
-import com.codesoom.assignment.dto.response.UserModificationData;
+import com.codesoom.assignment.dto.request.UserModificationData;
 import com.codesoom.assignment.errors.UserEmailDuplicationException;
+import com.codesoom.assignment.errors.UserNotFoundException;
 import com.github.dozermapper.core.Mapper;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +42,8 @@ public class UserService {
 
     public User updateUser(Long id, UserModificationData modificationData) {
         // 전달받은 id로 속성값을 찾아온다.
-        User user = userRepository.findById(id).get();
+        // 하지만 비어있으면 NotFound Exception을 준다.
+        User user = findUser(id);
 
         // 검색된 속성값에 전달받은 속성값으로 변경한다.
         User source = mapper.map(modificationData, User.class);
@@ -52,6 +54,27 @@ public class UserService {
     }
 
     public User deleteUser(long id) {
-        return null;
+        // 1. 전달 받은 ID가 존재하는 사용자인지 찾아온다.
+        // 존재 하지 않는 ID일 경우 404 Error발생.
+        User user = findUser(id);
+
+        user.destroy();
+
+        return user;
+    }
+
+    private User findUser(Long id) {
+        // findByIdAndDeletedIsFalse(id)를 통해
+        // 아래처럼 줄일 수 있다.
+        return userRepository.findByIdAndDeletedIsFalse(id)
+                .orElseThrow(() -> new UserNotFoundException(id));
+
+//        User user = userRepository.findByIdAndDeletedIsFalse(id)
+//                .orElseThrow(() -> new UserNotFoundException(id));
+//
+//        if (user.isDeleted()) {
+//            throw new UserNotFoundException(id);
+//        }
+//        return user;
     }
 }

@@ -8,4 +8,6 @@ public interface UserRepository {
     boolean existsByEmail(String email);
 
     Optional<User> findById(Long id);
+
+    Optional<User> findByIdAndDeletedIsFalse(Long id);
 }

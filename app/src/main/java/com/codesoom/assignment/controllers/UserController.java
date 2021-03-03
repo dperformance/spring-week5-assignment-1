@@ -11,7 +11,7 @@ package com.codesoom.assignment.controllers;
 import com.codesoom.assignment.application.UserService;
 import com.codesoom.assignment.domain.User;
 import com.codesoom.assignment.dto.request.UserRegistrationData;
-import com.codesoom.assignment.dto.response.UserModificationData;
+import com.codesoom.assignment.dto.request.UserModificationData;
 import com.codesoom.assignment.dto.response.UserResultData;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -45,6 +45,12 @@ public class UserController {
 
         return getUserResultData(user);
 
+    }
+
+    @DeleteMapping("{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void destroy(@PathVariable Long id) {
+        userService.deleteUser(id);
     }
 
     private UserResultData getUserResultData(User user) {
